@@ -38,7 +38,7 @@ void comsumir()
         if(countElemnt < 0){
             estado = BUFFERVAZIO;
         }
-        Sleep(9);
+        Sleep(12);
     }
 }
 
@@ -47,7 +47,7 @@ void produzir(int id)
     int item = id;
     while (sair == false)
     {
-        if (estado == BUFFERVAZIO)
+        if (countElemnt != TAM_MAX_BUFFER)
         {
             mtx.lock();
             buffer[fim] = item;
