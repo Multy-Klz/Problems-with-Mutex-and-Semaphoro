@@ -15,13 +15,14 @@ int estado = BUFFERVAZIO;
 int fim = 0;
 int inicio = 0;
 bool sair = false;
-
+int countElemnt = 0;
+// aperte ENTER para parar a execução //
 void comsumir()
 {
     int item = 0;
     while (sair == false)
     {
-        if (estado == BUFFERCHEIO)
+        if (countElemnt > 0)
         {
             mtx.lock();
             std::cout << "Comsumidor consumiu elemento: " << buffer[inicio] << std::endl;
@@ -31,10 +32,13 @@ void comsumir()
             {
                 inicio = 0;
             }
+            countElemnt--;
             mtx.unlock();
         }
-        estado = BUFFERVAZIO;
-        Sleep(5);
+        if(countElemnt < 0){
+            estado = BUFFERVAZIO;
+        }
+        Sleep(9);
     }
 }
 
@@ -55,11 +59,13 @@ void produzir(int id)
                 fim = 0;
             }
             item++;
+            countElemnt++;
             mtx.unlock();
         }
-        estado = BUFFERCHEIO;
+        if(countElemnt == TAM_MAX_BUFFER){
+             estado = BUFFERCHEIO;
+        }
         Sleep(1);
-        
     }
 }
 void parar()
