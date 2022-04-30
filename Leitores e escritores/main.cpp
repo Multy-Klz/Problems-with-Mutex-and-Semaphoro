@@ -81,6 +81,7 @@ int main(){
     std::thread leitores[6];
     std::thread escritores[3];
     std::thread sair;
+    sair = std::thread(stop);
     for(int i=0;i<6;i++){
         leitores[i] = std::thread(leitor);
     }
@@ -93,9 +94,6 @@ int main(){
     for(int i=0;i<3;i++){
         escritores[i].join();
     }
-
-
-    sair = std::thread(stop);  
     sair.join();
 
     return 0;
