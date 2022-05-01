@@ -1,28 +1,30 @@
 #include <thread>
 #include <iostream>
 #include <mutex>
-#include <mutex>
 #include <chrono>
 #include <windows.h>
 #include <condition_variable>
 #include <exception>
-#include <pthread.h>
 
 using std::cin;
 using std::cout;
 using std::endl;
 
+// Define quantas cadeiras vão existir no problema do barbeiro
 const int lugaresTotal = 3;
 
+// mutex para incrementar os espaços disponíveis. Aumentar a quantidade de cadeiras vagas
 std::mutex mtxSeats;
 
-int freeSeats = 3;
-
+// mutex para controle de ocupação das cadeiras
 std::mutex m;
 std::mutex status;
+// mutex para sincronizar com o barbeiro
 std::mutex barberWork;
+// sinaliza estados globais para as threads
 std::condition_variable cv;
 
+// classe cadeira, que define  as cadeiras e os metodos que vão ser efetuados sobre as cadeiras
 class Chairs
 {
 public:
@@ -41,30 +43,13 @@ public:
         cout << " Tamanho: " << tamanho << " disponivel: " << disponivel << "\n";
     }
 
-    // Função que verifica se existe lugar vago nas cadeiras e ocupa um caso tenha
-
+    // Sinaliza ao barbeiro para contar o cabelo
     void setX(bool boolean)
     {
         x = boolean;
     }
 
-    bool hasSpace()
-    {
-        cout << " Thread verificando espaco \n";
-        std::unique_lock<std::mutex> lk(m); // bloqueia outras threads ao verificarem que está lock
-        cv.wait(lk, [this]
-                { return disponivel > 0; });
-        if (disponivel == 0)
-        {
-            cout << " Sem espaço, matando thread \n";
-            return false;
-        }
-
-        lk.unlock();
-        cout << " Tem espaco --- continuando \n";
-        return true;
-    }
-
+    // Procedimento para ocupar uma cadeira pelos clientes ou barbeiro
     void requisitarCadeira()
     {
 
@@ -85,17 +70,20 @@ public:
         }
     }
 
+    // Variavel que define se a thread (clientes está cortando o cabelo)
     void setReadyToCut(bool state)
     {
         readyToCut = state;
     }
 
+    // retorna o valor de readyToCut
     bool getReadyToCut()
     {
         return readyToCut;
     }
 
-    void finalize()
+    // Metodo para terminar o corte e liberar a cadeira
+    void cortarCabelo()
     {
 
         std::unique_lock<std::mutex> lk(status); // bloqueia outras threads ao verificarem que está lock
@@ -118,7 +106,7 @@ public:
         lk.unlock();
     }
 
-    // Função que libera a cadeira do barbeiro após terminar o corte
+    // Função que libera a cadeira após terminar o corte
     void release()
     {
         mtxSeats.lock();
@@ -128,6 +116,7 @@ public:
     }
 };
 
+// classe do barbeiro com os métodos que ele vai fazer
 class Barber
 {
 public:
@@ -135,6 +124,7 @@ public:
 
     Barber(){};
 
+    // função para manter ele dormindo se nenhum cliente sinalizar para ele trabalhar
     void goToSleep()
     {
         while (work == false)
@@ -144,6 +134,7 @@ public:
         cout << "Barbeiro Acordando \n";
     }
 
+    // atualiza o estado do barbeiro de dormindo para trabalhando
     void setWork(bool state)
     {
         std::unique_lock<std::mutex> lk(barberWork);
@@ -154,6 +145,7 @@ public:
         lk.unlock();
     }
 
+    // retorna o estado do barbeiro
     bool getWork()
     {
         std::unique_lock<std::mutex> lk(barberWork);
@@ -172,9 +164,10 @@ void barbeiro(Chairs &chair, Barber &barber)
     int n = 100;
     while (n > 0)
     {
+        // verifica se tem cliente nas cadeiras e se seu estado é para TRABALHAR
         if (chair.disponivel < lugaresTotal || barber.work == true)
         {
-
+            // Valida se existe clientes nas cadeiras, se não existir, ele coloca o trabalho como false para ir dormir
             if (chair.disponivel == lugaresTotal)
             {
                 barber.setWork(false);
@@ -182,7 +175,7 @@ void barbeiro(Chairs &chair, Barber &barber)
             else
             {
 
-                // tem q parar aqui até uma thread sinalizar para ele cortar
+                // Se ele estiver trabalhando, ele começa a cortar o cabelo
 
                 // Corte de cabelo do cliente
                 if (chair.getReadyToCut() == true)
@@ -215,6 +208,7 @@ void barbeiro(Chairs &chair, Barber &barber)
 void thread1(Chairs &chair, Barber &barber)
 {
     bool barberstatus = barber.getWork();
+    // verifica se o barbeiro está dormindo, para sentar e acorda-lo
     if (barber.getWork() == false)
     {
         cout << "Acordando barbeiro e ocupando o lugar dele\n";
@@ -228,7 +222,8 @@ void thread1(Chairs &chair, Barber &barber)
         chair.requisitarCadeira();
         Sleep(2000);
     }
-    chair.finalize();
+    // função onde os clientes esperam os cortes de cabelo serem finalizados
+    chair.cortarCabelo();
 }
 
 // void thTeste(Chairs &chair, Barber &barber)
@@ -238,12 +233,15 @@ void thread1(Chairs &chair, Barber &barber)
 
 int main()
 {
+    // cria as cadeiras e o barbeiro
     Chairs chairs(lugaresTotal, lugaresTotal);
     Barber barber;
 
+    // cria uma thread barbeiro
     std::thread b(barbeiro, std::ref(chairs), std::ref(barber));
 
     Sleep(3000);
+    // cria as threads clientes
     std::thread t1(thread1, std::ref(chairs), std::ref(barber));
     Sleep(1000);
     std::thread t2(thread1, std::ref(chairs), std::ref(barber));
